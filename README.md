@@ -5,9 +5,10 @@ This Next.js API accepts referral details and a resume. Clerk authenticates the 
 ## Test in your browser
 
 1. Run `npm run dev` and open <http://localhost:3000>.
-2. Click **Create account** or **Sign in**. After signing in, the referral form appears.
-3. Click **download a sample PDF**, then select that file in the **Resume** field. Fill the other fields and click **Submit test referral**.
-4. A successful request displays **Referral submitted. Status: pending.** In Supabase's SQL Editor, verify the record and decoded resume size:
+2. Signed-out users see a minimal login page explaining that this is an employee initiative, not Juspay's official referral portal, and that requests are verified by the referring employee before submission to the official portal. Click **Sign in** to continue to Clerk, then return to the referral form. Signed-in users see the form immediately.
+   **Referral email** is automatically filled from the signed-in account's primary email. Users with a primary email at `@juspay.in` can edit it to refer any valid email; it stays read-only for everyone else. The API enforces the same rule using the account returned by Clerk.
+3. Complete the form, choose an opening, and upload or drag in a resume. Click **Submit referral**.
+4. A successful request displays **Referral submitted successfully.** with the current status. In Supabase's SQL Editor, verify the record and decoded resume size:
 
    ```sql
    select referral_email, referral_name, graduation_date, job_id,
@@ -50,14 +51,13 @@ curl -X POST http://localhost:3000/api/referrals \
   -H "Authorization: Bearer YOUR_CLERK_SESSION_TOKEN" \
   -F 'referralName=Alex Doe' \
   -F 'graduationDate=2027-07-01' \
-  -F 'referralEmail=alex@example.com' \
   -F 'jobId=DEV-BE02' \
   -F 'relationship=We worked together for two years.' \
   -F 'recommendation=Alex is an excellent problem solver.' \
   -F 'resume=@/path/to/resume.pdf'
 ```
 
-All form fields are required. Submit `graduationDate` as `YYYY-MM-DD`; the server stores it as India Standard Time text, for example `2027-07-01` becomes `Thu Jul 01 2027 00:00:00 GMT+0530 (India Standard Time)` in `graduation_date`. The resume may be a PDF, DOC, or DOCX up to 5 MB. `jobId` must be an Engineering job ID from `lib/openings.js`; the browser dropdown shows each job's title, type, location, and ID. The server derives `referralRole` and `referralRoleType` from that ID, so clients cannot set mismatched values. For example, `DEV-BE02` stores `Software Development Engineer Backend` and `Intern`. Email addresses are normalized to lowercase, and only one referral can be submitted per email. The API returns `401` without a valid Clerk user, `409` for a duplicate email, and `201` with `referralEmail`, `jobId`, `referralRole`, `referralRoleType`, `status`, and `createdAt` on success. New referrals start as `pending`. It never returns the resume contents.
+All form fields in the example are required. `referralEmail` defaults to the signed-in Clerk user's primary email address. If that account email has the exact domain `juspay.in` (case-insensitive), an optional `referralEmail` form field can specify any valid email of at most 320 characters. Other accounts cannot override their email, even by changing the request. The saved email is trimmed and normalized to lowercase. Invalid supplied emails from Juspay users receive `400`. Accounts without a valid primary email receive `400`; an unavailable Clerk account lookup returns `503`. Submit `graduationDate` as `YYYY-MM-DD`; the server stores it as India Standard Time text, for example `2027-07-01` becomes `Thu Jul 01 2027 00:00:00 GMT+0530 (India Standard Time)` in `graduation_date`. The resume may be a PDF, DOC, or DOCX up to 5 MB. `jobId` must be an Engineering job ID from `lib/openings.js`; the browser dropdown shows each job's title, type, location, and ID. The server derives `referralRole` and `referralRoleType` from that ID, so clients cannot set mismatched values. For example, `DEV-BE02` stores `Software Development Engineer Backend` and `Intern`. Only one referral can be submitted per email. The API returns `401` without a valid Clerk user, `409` for a duplicate email, and `201` with `referralEmail`, `jobId`, `referralRole`, `referralRoleType`, `status`, and `createdAt` on success. New referrals start as `pending`. It never returns the resume contents.
 
 The migration replaces `opening` with `job_id`, `referral_role`, and `referral_role_type`. Existing rows with a recognized job ID are backfilled. For older unrecognized opening values, the original text remains in `referral_role`, while `job_id` and `referral_role_type` stay null because their values cannot be determined.
 

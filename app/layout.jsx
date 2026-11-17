@@ -2,8 +2,8 @@ import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata = {
-  title: 'Referral API Test',
-  description: 'Submit a test referral through Clerk and Supabase.',
+  title: 'Juspay Referrals',
+  description: 'An initiative by employees to streamline referral requests for Juspay.',
 };
 
 export default function RootLayout({ children }) {
